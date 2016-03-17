@@ -30,34 +30,38 @@
 
 require 'sensu-plugin/check/cli'
 require 'diplomat'
+require 'socket'
+require 'json'
 
 #
 # Service Status
 #
 class ServiceStatus < Sensu::Plugin::Check::CLI
-  option :service,
-         description: 'a service managed by consul',
-         short: '-s SERVICE',
-         long: '--service SERVICE',
-         default: 'consul'
+  # option :service,
+  #        description: 'a service managed by consul',
+  #        short: '-s SERVICE',
+  #        long: '--service SERVICE',
+  #        default: 'consul'
 
-  option :all,
-         description: 'get all services in a non-passing status',
-         short: '-a',
-         long: '--all'
+  # option :all,
+  #        description: 'get all services in a non-passing status',
+  #        short: '-a',
+  #        long: '--all'
 
   # Get the check data for the service from consul
   #
   def acquire_service_data
-    if config[:all]
-      Diplomat::Health.checks
-    else
-      Diplomat::Health.checks(config[:service])
-    end
+    Diplomat::Check.checks
   rescue Faraday::ConnectionFailed => e
     warning "Connection error occurred: #{e}"
   rescue StandardError => e
     unknown "Exception occurred when checking consul service: #{e}"
+  end
+
+  def add_sensu_check_result(result, host='localhost', port=3030)
+    s = TCPSocket.new(host, port)
+    s.write(result.to_json.to_s)
+    s.close
   end
 
   # Main function
@@ -66,19 +70,22 @@ class ServiceStatus < Sensu::Plugin::Check::CLI
     data = acquire_service_data
     passing = []
     failing = []
-    data.each do |d|
-      passing << {
-        'node' => d['Node'],
-        'service' => d['ServiceName'],
-        'service_id' => d['ServiceID'],
-        'notes' => d['Notes']
-      } if d['Status'] == 'passing'
-      failing << {
-        'node' => d['Node'],
-        'service' => d['ServiceName'],
-        'service_id' => d['ServiceID'],
-        'notes' => d['Notes']
-      } if d['Status'] == 'failing'
+    data.each do |check_name, d|
+      if d['Status'] == 'passing'
+        add_sensu_check_result({name: d['Name'], output: d['Output'], status: 0})
+        passing << {
+          'node' => d['Node'],
+          'name' => d['Name'],
+          'notes' => d['Notes']
+        }
+      else
+        add_sensu_check_result({name: d['Name'], output: d['Output'], status: 2})
+        failing << {
+          'node' => d['Node'],
+          'name' => d['Name'],
+          'notes' => d['Notes']
+        }
+      end
     end
     unknown 'Could not find service - are there checks defined?' if failing.empty? && passing.empty?
     critical failing unless failing.empty?
