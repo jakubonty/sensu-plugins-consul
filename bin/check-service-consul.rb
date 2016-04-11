@@ -48,6 +48,11 @@ class ServiceStatus < Sensu::Plugin::Check::CLI
   #        short: '-a',
   #        long: '--all'
 
+  option :consul_url,
+         description: 'consul url',
+         short: '-G CONSUL_URL',
+         long: '--consul_url CONSUL_URL'
+
   # Get the check data for the service from consul
   #
   def acquire_service_data
@@ -67,6 +72,8 @@ class ServiceStatus < Sensu::Plugin::Check::CLI
   # Main function
   #
   def run
+    Diplomat.configuration.url = config[:consul_url] if config[:consul_url]
+
     data = acquire_service_data
     passing = []
     failing = []
