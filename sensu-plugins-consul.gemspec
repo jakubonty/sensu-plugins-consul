@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'date'
 
 if RUBY_VERSION < '2.0.0'
-  require 'sensu-plugins-consul'
+  require 'sensu-plugins-consul-easy'
 else
   require_relative 'lib/sensu-plugins-consul'
 end
@@ -29,7 +29,7 @@ Gem::Specification.new do |s|
                                'release_draft'      => 'false',
                                'release_prerelease' => 'false'
                               }
-  s.name                   = 'sensu-plugins-consul'
+  s.name                   = 'sensu-plugins-consul-easy'
   s.platform               = Gem::Platform::RUBY
   s.post_install_message   = 'You can use the embedded Ruby by setting EMBEDDED_RUBY=true in /etc/default/sensu'
   s.require_paths          = ['lib']
